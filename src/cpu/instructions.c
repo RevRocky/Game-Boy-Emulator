@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <limits.h>
 
+#include "../util.h"
 #include "instructions.h"
 #include "../memory/memory.h"
 
@@ -52,7 +53,7 @@ Register8 set_flags_sub(Register8 result, Register8 old_accumulator);
  * 		0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, Ox3E
  * 
  * @param: destination: The register we will load a value into.
- ^ @param: value: An 8 bit immediate value which we will load into
+ * @param: value: An 8 bit immediate value which we will load into
  * 			said register
  */
 void load_immediate_byte(Register8 *destination, unsigned char value) {
@@ -1140,7 +1141,7 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
 void test_bit_register(unsigned char target_value, unsigned char bit, Register8 *flags) {
 	// As mentioned previously, we abort if we've erroneous operands.
 	if (bit < 0 || 7 < bit) {
-		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", *target_register, bit);
+		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", target_value, bit);
 		abort();
 	}
 	// implicit else. 
@@ -1165,9 +1166,10 @@ void test_bit_register(unsigned char target_value, unsigned char bit, Register8 
  * @param flags: Pointer to the flags register
  */
 void test_bit_indirect(Register16 *address_register, unsigned char bit, Register8 *flags) {
+	
 	// As mentioned previously, we abort if we've erroneous operands.
 	if (bit < 0 || 7 < bit) {
-		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", *target_register, bit);
+		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", address_register, bit);
 		abort();
 	}
 	// Implicit else.
@@ -1311,7 +1313,7 @@ void jump_zero_reset(Register16 *programme_counter, unsigned short address_big_e
 	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
 	
 	// Flip bits and then mask for Zero. 
-	if (~(*flags) & 0x80) {
+	if (!zero_flag_set(flags)) {
 		*programme_counter = address;		// Update our programme counter
 	}
 }
@@ -1336,7 +1338,7 @@ void jump_zero_set(Register16 *programme_counter, unsigned short address_big_end
 	
 	// Mask out everything but the Zero Flag. 
 	// if the number is non zero, jump
-	if (*flags & 0x80) {
+	if (zero_flag_set(flags)) {
 		*programme_counter = address;		// Update our programme counter
 	}
 }
@@ -1360,7 +1362,7 @@ void jump_carry_reset(Register16 *programme_counter, unsigned short address_big_
 	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
 	
 	// Flip bits and then mask for carry
-	if (~(*flags) & 0x10) {
+	if (!carry_flag_set(flags)) {
 		*programme_counter = address;		// Update our programme counter
 	}
 }
@@ -1384,7 +1386,7 @@ void jump_carry_set(Register16 *programme_counter, unsigned short address_big_en
 	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
 	
 	// Mask out everything but the Carry Flag. 
-	if (*flags & 0x10) {
+	if (carry_flag_set(flags)) {
 		*programme_counter = address;		// Update our programme counter
 	}
 }
@@ -1436,7 +1438,7 @@ void jump_relative_pos(Register16 *programme_counter, unsigned char offset) {
  */
 void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for zero
-	if (~(*flags) & 0x80) {
+	if (!zero_flag_set(flags)) {
 		*programme_counter += offset;
 	}
 }
@@ -1458,7 +1460,7 @@ void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offse
  */
 void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for zero
-	if (*flags & 0x80) {
+	if (zero_flag_set(flags)) {
 		*programme_counter += offset;
 	}
 }
@@ -1480,7 +1482,7 @@ void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset,
  */
 void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for carry
-	if (~(*flags) & 0x10) {
+	if (!carry_flag_set(flags)) {
 		*programme_counter += offset;
 	}
 }
@@ -1502,7 +1504,7 @@ void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offs
  */
 void jump_relative_carry_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for carry
-	if (*flags & 0x10) {
+	if (carry_flag_set(flags)) {
 		*programme_counter += offset;
 	}
 }
@@ -1535,22 +1537,145 @@ void call(Register16 *stack_pointer, Register16 *programme_counter, unsigned sho
 	unsigned char programme_counter_msb = (unsigned char) ((*programme_counter >> 4) & 0x0F);
 	unsigned char programme_counter_lsb = (unsigned char) *programme_counter & 0x0F;
 
-	// Save previous stack pointer value to memory
-	// TODO: Investiate replacing with a PUSH. 
-	write_byte(programme_counter_lsb, XXX);
-
-	// TODO: Decrement the stack pointer. 
-
-	write_byte(programme_counter_msb, YYY);
+	// Save previous stack pointer value to memory and decrement
+	write_byte(programme_counter_lsb, *stack_pointer--);
+	write_byte(programme_counter_msb, *stack_pointer--);
 	
-	// Put call address into a little endian form
-	unsigned short call_address = (call_address_big_endian << 8) | (call_address_big_endian >> 8);
+	unsigned short call_address = to_little_endian(call_address_big_endian);
 
 	// Load Call address to programme counter And we are good to go.
 	*programme_counter = call_address;
 }
 
+/**
+ * /brief: Calls a function at supplied address if zero flag is not set.
+ * 
+ * If the zero flag is reset, execution will begin at the address supplied 
+ * in the call_address_big_endian parameter. Otherwise execution will continue
+ * at the current location of the programme counter. 
+ * 
+ * This function implements the following opcodes:
+ * 		C4
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
+ * the address of the CALL instruction. At the end it will be plaved at what ever address is supplied by 
+ * call_address_big_endian.
+ * @param call_address_big_endian: This is the address of the function we wish to begin executing. This 
+ * address is supplied to us in a big endian format so some rearranging has to be done to make it compatable
+ * with C which assumes numbers are little endian.
+ * @param flags: Pointer to the flags register
+ */ 
+void call_zero_reset(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags) {
+	if (!zero_flag_set(flags)) {
+		call(stack_pointer, programme_counter, call_address_big_endian);
+	}
+}
+
+/**
+ * /brief: Calls a function at supplied address if zero flag is set.
+ * 
+ * If the zero flag is set, execution will begin at the address supplied 
+ * in the call_address_big_endian parameter. Otherwise execution will continue
+ * at the current location of the programme counter. 
+ * 
+ * This function implements the following opcodes:
+ * 		CC
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
+ * the address of the CALL instruction. At the end it will be plaved at what ever address is supplied by 
+ * call_address_big_endian.
+ * @param call_address_big_endian: This is the address of the function we wish to begin executing. This 
+ * address is supplied to us in a big endian format so some rearranging has to be done to make it compatable
+ * with C which assumes numbers are little endian.
+ * @param flags: Pointer to the flags register
+ */ 
+void call_zero_set(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags) {
+	if (zero_flag_set(flags)) {
+		call(stack_pointer, programme_counter, call_address_big_endian);
+	}
+}
+
+/**
+ * /brief: Calls a function at supplied address if carry flag is not set.
+ * 
+ * If the carry flag is reset, execution will begin at the address supplied 
+ * in the call_address_big_endian parameter. Otherwise execution will continue
+ * at the current location of the programme counter. 
+ * 
+ * This function implements the following opcodes:
+ * 		D4
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
+ * the address of the CALL instruction. At the end it will be plaved at what ever address is supplied by 
+ * call_address_big_endian.
+ * @param call_address_big_endian: This is the address of the function we wish to begin executing. This 
+ * address is supplied to us in a big endian format so some rearranging has to be done to make it compatable
+ * with C which assumes numbers are little endian.
+ * @param flags: Pointer to the flags register
+ */ 
+void call_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags) {
+	if (!carry_flag_set(flags)) {
+		call(stack_pointer, programme_counter, call_address_big_endian);
+	}
+}
+
+/**
+ * /brief: Calls a function at supplied address if carry flag is set.
+ * 
+ * If the carry flag is set, execution will begin at the address supplied 
+ * in the call_address_big_endian parameter. Otherwise execution will continue
+ * at the current location of the programme counter. 
+ * 
+ * This function implements the following opcodes:
+ * 		DC
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
+ * the address of the CALL instruction. At the end it will be plaved at what ever address is supplied by 
+ * call_address_big_endian.
+ * @param call_address_big_endian: This is the address of the function we wish to begin executing. This 
+ * address is supplied to us in a big endian format so some rearranging has to be done to make it compatable
+ * with C which assumes numbers are little endian.
+ * @param flags: Pointer to the flags register
+ */ 
+void call_carry_set(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags) {
+	if (carry_flag_set(flags)) {
+		call(stack_pointer, programme_counter, call_address_big_endian);
+	}
+}
+
+
+
 /*** RESTARTS ***/
+
+/**
+ * /brief Pushes current prgramme counter to stack before restarting 
+ * execution at 0x0000 + offset
+ * 
+ * The current value of the programme counter is pushed to the stack. The programme 
+ * then begins executing from the memory address 0x0000 + offset. These offsets correspond to 
+ * the locations of different interrupt vectors within the Z80GB memory space.  
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
+ * the address of the RESTART instruction. At the end it will be placed at the address 0x0000 + offset. 
+ * call_address_big_endian.
+ * @param offset: The offset from 0x0000 the programme will resume execution at. 
+ */
+void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned char offset) {
+	// Decompose Stack Pointer into MSB and LSB.
+	unsigned char programme_counter_msb = (unsigned char) ((*programme_counter >> 4) & 0x0F);
+	unsigned char programme_counter_lsb = (unsigned char) *programme_counter & 0x0F;
+
+	// Save previous stack pointer value to memory and decrement
+	write_byte(programme_counter_lsb, *stack_pointer--);
+	write_byte(programme_counter_msb, *stack_pointer--);
+
+	*programme_counter = offset;	// The offset is from 0x0000 so we can simply supply the offset.
+}
 
 /*** RETURNS ***/
 
