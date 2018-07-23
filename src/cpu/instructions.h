@@ -111,10 +111,46 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
 void test_bit_register(Register8 *target_register, unsigned char *bit, Register8 *flags);
 void test_bit_indirect(Register16 *address_register, unsigned char bit, Register8 *flags);
 
-// Set;
+// Set
 void set_bit_register(Register8 *target_register, unsigned char bit);
+void set_bit_indirect(Register16 *address_register, unsigned char bit);
 
 // Reset
+void reset_bit_register(Register8 *target_register, unsigned char bit);
+void reset_bit_indirect(Register16 *address_register, unsigned char bit);
+
+// JUMPS //
+
+// Unconditional Jumps
+void jump_unconditional(Register16 *programme_counter, unsigned short address_big_endian);
+void jump_indirect(Register16 *programme_counter, Register16 *address_register);
+void jump_relative_pos(Register16 *programme_counter, unsigned char offset);
+
+// Conditional Jumps
+void jump_zero_reset(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags);
+void jump_zero_set(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags);
+void jump_carry_reset(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags);
+void jump_carry_set(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags);
+
+void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags);
+void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset, Register8 *flags);
+void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags);
+void jump_relative_carry_set(Register16 *programme_counter, unsigned char offset, Register8 *flags);
+
+// CALLS //
+void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned char offset);
+
+// Unconditional
+void call(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian);
+
+// Conditional
+void call_zero_reset(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags);
+void call_zero_set(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags);
+void call_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags);
+void call_carry_set(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags);
+
+// RESTARTS //
+
 
 // MISC //
 
