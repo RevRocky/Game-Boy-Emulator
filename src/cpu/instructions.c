@@ -60,6 +60,100 @@ void load_immediate_byte(Register8 *destination, unsigned char value) {
 	*destination = value;						// Riveting stuff. 
 }
 
+/**
+ * /brief Loads the value stored in one register into another.
+ * 
+ * A standard register load. The value in source is loaded into destination.
+ * 
+ * This function implements the following opcodes:
+ * 		7F, 78, 79, 7A, 7B, 7C, 7D, 7F
+ * 		40, 41, 42, 42, 44, 45, 47
+ * 		48, 49, 4A, 4B, 4C, 4D, 4F
+ * 		50, 51, 52, 53, 54, 55, 57
+ * 		58, 59, 5A, 5B, 5C, 5D, 5F
+ * 		60, 61, 62, 63, 64, 65, 67
+ * 		68, 69, 6A, 6B, 6C, 6D, 6F
+ * 
+ * @param destination: Pointer to the destination register
+ * @param source: Pointer to the source register
+ */
+void load_register(Register8 *destination, Register8 *source) {
+	*destination = *source;
+}
+
+/**
+ * /brief A register load where the destination is a memory address contained within 
+ *		 the address register.
+ *
+ * A register load where the destination is a location in memory accessed through indirect
+ * addressing. 
+ * 
+ * This function implements the following opcodes:
+ * 		70, 71, 72, 73, 74, 75, 02, 12, 77
+ * 
+* @param adress_register: The register that contains the address of our operand. 
+* 		Unlike a lot of other instructions which utilise indirect addressing in the 
+* 		Z80GB, it is legal to supply some of the other 16 bit register pairs (BC, DE, HL),
+* 		to this load. While it is possible to do this, it is only legal when the destination
+* 		register is the Accumulator. 
+ * @param source: The register containing the value we will write to memory
+ */
+void load_register_indirect_destination(Register16 *address_register, Register8 *source) {
+	write_byte(address, *source);
+}
+
+/**
+ * /brief Reads the value stored at the memory address referenced in the address register
+ * 		 into the supplied destination register
+ * 
+ * Reads the value stored at a given memory address (referenced in the address register)
+ * 		into the supplied destination register. 
+ * 
+ * This function implements the following opcodes: 
+ * 		7E, 46, 4E, 56, 5E, 66, 6E, 0A, 1A
+ * 
+ *@param destination: The 8-bit register that will be the destination of the load.
+* @param adress_register: The register that contains the address of our operand. 
+* 		Unlike a lot of other instructions which utilise indirect addressing in the 
+* 		Z80GB, it is legal to supply some of the other 16 bit register pairs (BC, DE, HL),
+* 		to this load. While it is possible to do this, it is only legal when the destination
+* 		register is the Accumulator. 
+ */
+void load_register_indirect_source(Register8 *destination, Register16 *address_register) {
+	unsigned char value_at_address = read_byte(*address_register);
+	*destination = value_at_address;
+}
+
+/**
+ * /brief Loads the accumulator with the value at the supplied memory address
+ * 
+ * Loads the accumulator with a value stored at the supplied memory address.
+ * 
+ * This function implements the following opcodes: 
+ * 		3E
+ * 
+ * @param accumulator: Pointer to the accumulator register.
+ * @param memory_address: The memory address of the value we are loading into the 
+ * 		accumulator. We treat this value in a similar way we do indirect addressing.
+ */
+void load_accumulator_from_address(Register8 *accumultator, unsigned short memory_address) {
+	*accumulator = read_byte(memory_address);
+}
+
+/**
+ * /brief Writes the value stored in the accumulator to a specified memory address
+ * 
+ * Writes the value in the accumulator to the supplied memory address
+ * 
+ * @param memory_address: The memory address of the value we wish to store the value of the 
+ * 		accumulator in.
+ * @param accumulator: Pointer to the accumulator
+ */
+void write_accumulator_to_address(unsigned short memory_address, Register8 *accumulator) {
+	write_byte(memory_address, *accumulator);
+}
+
+
 /*** 16-BIT LOADS ***/
 
 /*** 8-BIT ARITHMETIC / LOGICAL ***/
@@ -1290,7 +1384,7 @@ void reset_bit_indirect(Register16 *address_register, unsigned char bit) {
  * @param address_little_endian: The new value of the programme counter. Big endian.
  */
 void jump_unconditional(Register16 *programme_counter, unsigned short address_big_endian) {
-	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
+	unsigned short address = to_little_endian(address_big_endian);
 	*programme_counter = address;		// Update our programme counter
 }
 
@@ -1310,7 +1404,7 @@ void jump_unconditional(Register16 *programme_counter, unsigned short address_bi
  * @param flags: Pointer to the flags register
  */
 void jump_zero_reset(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags) {
-	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
+	unsigned short address = to_little_endian(address_big_endian);
 	
 	// Flip bits and then mask for Zero. 
 	if (!zero_flag_set(flags)) {
@@ -1334,7 +1428,7 @@ void jump_zero_reset(Register16 *programme_counter, unsigned short address_big_e
  * @param flags: Pointer to the flags register
  */
 void jump_zero_set(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags) {
-	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
+	unsigned short address = to_little_endian(address_big_endian);
 	
 	// Mask out everything but the Zero Flag. 
 	// if the number is non zero, jump
@@ -1359,7 +1453,7 @@ void jump_zero_set(Register16 *programme_counter, unsigned short address_big_end
  * @param flags: Pointer to the flags register
  */
 void jump_carry_reset(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags) {
-	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
+	unsigned short address = to_little_endian(address_big_endian);
 	
 	// Flip bits and then mask for carry
 	if (!carry_flag_set(flags)) {
@@ -1383,7 +1477,7 @@ void jump_carry_reset(Register16 *programme_counter, unsigned short address_big_
  * @param flags: Pointer to the flags register
  */
 void jump_carry_set(Register16 *programme_counter, unsigned short address_big_endian, Register8 *flags) {
-	unsigned short address = (address_big_endian << 8) | (address_big_endian >> 8);
+	unsigned short address = to_little_endian(address_big_endian);
 	
 	// Mask out everything but the Carry Flag. 
 	if (carry_flag_set(flags)) {
@@ -1659,6 +1753,9 @@ void call_carry_set(Register16 *stack_pointer, Register16 *programme_counter, un
  * then begins executing from the memory address 0x0000 + offset. These offsets correspond to 
  * the locations of different interrupt vectors within the Z80GB memory space.  
  * 
+ * This function implements the following opcodes
+ * 		C7, CF, D7, DF, E7, EF, F7, FF
+ * 
  * @param stack_pointer: Pointer to the stack pointer.
  * @param programme_counter: Pointer to the programme counter. At the beginning of execution, it will have 
  * the address of the RESTART instruction. At the end it will be placed at the address 0x0000 + offset. 
@@ -1678,6 +1775,103 @@ void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned 
 }
 
 /*** RETURNS ***/
+
+/**
+ * /brief Unconditional function return.
+ * 
+ * Pops two bytes from the stack and sets the programme counter to that address. Execution
+ * then begins at that address.
+ * 
+ * 
+ * This function implements the following opcodes:
+ * 		C9, D9
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param programme_counter: Pointer to the programme counter 
+ */
+void return_unconditional(Register16 *stack_pointer, Register16 *programme_counter) {
+	// We store the old PC s.t. the MSNibble will be read first.
+	unsigned short new_programme_counter = read_byte((*stack_pointer)++) << 4; 	// Stack is descending
+	new_programme_counter = read_byte((*stack_pointer)++) | new_programme_counter;	// Read LSNibble, mask with MSNibble
+
+	*programe_counter = new_programme_counter;
+}
+
+/**
+ * /brief Returns from a function if the Zero Flag is not Set
+ * 
+ * Pops two bytes from the stack and sets the programme counter to that address. We do this 
+ * only if the zero flag is not set.
+ * 
+ * This function implements the following opcodes:
+ * 		C0
+ * 
+ * @param stack_pointer: Pointer to the SP register.
+ * @param programme_counter: Pointer to the programme counter 
+ * @param flags: Pointer to the flags register
+ */
+void return_zero_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
+	if (!zero_flag_set(flags)) {
+		return_unconditional(stack_pointer, programe_counter);
+	}
+}
+
+/**
+ * /brief Returns from a function if the Zero Flag is set
+ * 
+ * Pops two bytes from the stack and sets the programme counter to that address. We do this 
+ * only if the zero flag is set.
+ * 
+ * This function implements the following opcodes:
+ * 		C8
+ * 
+ * @param stack_pointer: Pointer to the SP register.
+ * @param programme_counter: Pointer to the programme counter 
+ * @param flags: Pointer to the flags register
+ */
+void return_zero_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
+	if (zero_flag_set(flags)) {
+		return_unconditional(stack_pointer, programe_counter);
+	}
+}
+
+/**
+ * /brief Returns from a function if the carry Flag is not Set
+ * 
+ * Pops two bytes from the stack and sets the programme counter to that address. We do this 
+ * only if the carry flag is not set.
+ * 
+ * This function implements the following opcodes:
+ * 		D0
+ * 
+ * @param stack_pointer: Pointer to the SP register.
+ * @param programme_counter: Pointer to the programme counter 
+ * @param flags: Pointer to the flags register
+ */
+void return_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
+	if (!carry_flag_set(flags)) {
+		return_unconditional(stack_pointer, programe_counter);
+	}
+}
+
+/**
+ * /brief Returns from a function if the carry Flag is set
+ * 
+ * Pops two bytes from the stack and sets the programme counter to that address. We do this 
+ * only if the carry flag is set.
+ * 
+ * This function implements the following opcodes:
+ * 		D8
+ * 
+ * @param stack_pointer: Pointer to the SP register.
+ * @param programme_counter: Pointer to the programme counter 
+ * @param flags: Pointer to the flags register
+ */
+void return_carry_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
+	if (zero_carry_set(flags)) {
+		return_unconditional(stack_pointer, programe_counter);
+	}
+}
 
 /*** MISC ***/
 

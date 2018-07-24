@@ -14,6 +14,12 @@
 
 // 8 BIT LOADS // 
 void load_immediate_byte(Register8 *destination, unsigned char value);
+void load_register(Register8 *destination, Register8 *source);
+void load_register_indirect_destination(Register16 *address_register, Register8 *source);
+void load_register_indirect_source(Register8 *destination, Register16 *address_register);
+void load_accumulator_from_address(Register8 *accumultator, unsigned short memory_address);
+void write_accumulator_to_address(unsigned short memory_address, Register8 *accumulator);
+
 
 // 8-BIT ALU //
 
@@ -150,7 +156,18 @@ void call_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, 
 void call_carry_set(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian, Register8 *flags);
 
 // RESTARTS //
+void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned char offset);
 
+// RETURNS // 
+
+// Unconditional
+void return_unconditional(Register16 *stack_pointer, Register16 *programme_counter);
+
+// Conditional
+void return_zero_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags);
+void return_zero_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags);
+void return_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags);
+void return_carry_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags);
 
 // MISC //
 
