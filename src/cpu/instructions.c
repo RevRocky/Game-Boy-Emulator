@@ -130,14 +130,14 @@ void load_register_indirect_source(Register8 *destination, Register16 *address_r
  * Loads the accumulator with a value stored at the supplied memory address.
  * 
  * This function implements the following opcodes: 
- * 		3E
+ * 		3E, F2 (Preprocessing Required s.t. memory address is 0xFF00 + C)
  * 
  * @param accumulator: Pointer to the accumulator register.
  * @param memory_address: The memory address of the value we are loading into the 
  * 		accumulator. We treat this value in a similar way we do indirect addressing.
  */
 void load_accumulator_from_address(Register8 *accumultator, unsigned short memory_address) {
-	*accumulator = read_byte(memory_address);
+	*accumultator = read_byte(memory_address);
 }
 
 /**
@@ -145,12 +145,25 @@ void load_accumulator_from_address(Register8 *accumultator, unsigned short memor
  * 
  * Writes the value in the accumulator to the supplied memory address
  * 
+ * This function implements the following opcodes:
+ * 		EA, E2 (Preprocessing required s.t. memory address is 0xFF00 + C)
+ * 
  * @param memory_address: The memory address of the value we wish to store the value of the 
  * 		accumulator in.
  * @param accumulator: Pointer to the accumulator
  */
 void write_accumulator_to_address(unsigned short memory_address, Register8 *accumulator) {
 	write_byte(memory_address, *accumulator);
+}
+
+/**
+ * /brief Loads accumulator with value at address stored in address register. Decrements the address register.
+ * 
+ * Loads the accumulator with a value at the address in the address register. The address register is then decremented.
+ */
+void load_accumulator_decrement_address_register(Register8 *accumulator, Register16 *address_register) {
+	load_register_indirect_source(*accumulator, *address_register);
+	--address_register;
 }
 
 
