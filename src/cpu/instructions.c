@@ -88,6 +88,8 @@ void load_register(Register8 *destination, Register8 *source) {
  * A register load where the destination is a location in memory accessed through indirect
  * addressing. 
  * 
+ * TODO: Consider renaming this function to something clearer.
+ * 
  * This function implements the following opcodes:
  * 		70, 71, 72, 73, 74, 75, 02, 12, 77
  * 
@@ -130,7 +132,7 @@ void load_register_indirect_source(Register8 *destination, Register16 *address_r
  * Loads the accumulator with a value stored at the supplied memory address.
  * 
  * This function implements the following opcodes: 
- * 		3E, F2 (Preprocessing Required s.t. memory address is 0xFF00 + C)
+ * 		3E
  * 
  * @param accumulator: Pointer to the accumulator register.
  * @param memory_address: The memory address of the value we are loading into the 
@@ -146,7 +148,7 @@ void load_accumulator_from_address(Register8 *accumultator, unsigned short memor
  * Writes the value in the accumulator to the supplied memory address
  * 
  * This function implements the following opcodes:
- * 		EA, E2 (Preprocessing required s.t. memory address is 0xFF00 + C)
+ * 		EA
  * 
  * @param memory_address: The memory address of the value we wish to store the value of the 
  * 		accumulator in.
@@ -160,10 +162,101 @@ void write_accumulator_to_address(unsigned short memory_address, Register8 *accu
  * /brief Loads accumulator with value at address stored in address register. Decrements the address register.
  * 
  * Loads the accumulator with a value at the address in the address register. The address register is then decremented.
+ * 
+ * This function implements the following opcodes: 
+ * 		3A
+ * 
+ * @param accumulator: Pointer to the accumulator.
+ * @param address_register: Pointer to the (HL) address register. Decremented as part of the operation.
  */
 void load_accumulator_decrement_address_register(Register8 *accumulator, Register16 *address_register) {
-	load_register_indirect_source(*accumulator, *address_register);
+	load_register_indirect_source(accumulator, address_register);
 	--address_register;
+}
+
+/**
+ * /brief Loads accumulator with value at address stored in address register. Increments the address register.
+ * 
+ * Loads the accumulator with a value at the address in the address register. The address register is then incremented
+ * 
+ * This function implements the following opcodes:
+ * 		2A
+ * 
+ * @param accumulator: Pointer to the accumulator.
+ * @param address_register: Pointer to the (HL) address register. Incremented after load.
+ */
+void load_accumulator_increment_address_register(Register8 *accumulator, Register16 *address_register) {
+	load_register_indirect_source(accumulator, address_register);
+	++address_register;
+}
+
+/**
+ * /brief Saves the accumulator to the memory address referenced in the address register. Decrement address register.
+ * 
+ * Saves the accumulator to the memory address referenced in the address register. The address register is then decremented.
+ * 
+ * This function implements the following opcodes:
+ * 		32
+ * 
+ * @param address_register: Pointer to the address register. Decremented after load.
+ * @param accumulator: Pointer to the accumulator
+ */
+void write_accumulator_decrement_address_register(Register16 *address_register, Register8 *accumulaor) {
+	load_register_indirect_destination(address_register, accumulator);
+	--address_register;
+}
+
+/**
+ * /brief Saves the accumulator to the memory address referenced in the address register. Increment address register.
+ * 
+ * Saves the accumulator to the memory address referenced in the address register. The address register is then incremented.
+ * 
+ * This function implements the following opcodes: 
+ * 		22
+ * 
+ * @param address_register: Pointer to the address register. Incremented after load.
+ * @param accumulator: Pointer to the accumulator
+ */
+void write_accumulator_increment_address_register(Register16 *address_register, Register8 *accumulaor) {
+	load_register_indirect_destination(address_register, accumulator);
+	++address_register;
+}
+
+/**
+ * /brief Loads accumulator with value in the C'th IO port. Where C is the value in
+ * 		the offset register.
+ * 
+ * Used to load values from an IO port into the accumulator. The IO port we read from is 
+ * the C'th IO port where C is the value stored within the "C" register/
+ * 
+ * This function implements the following opcodes: 
+ * 		F2
+ * 
+ * @param accumulator: Pointer to the accumulator.
+ * @param offset_register: Pointer to the register with the value used as our offset. 
+ * 		This will only be called with the offset_register being Register C.
+ */
+void load_from_io_port_c(Register8 *accumulator, Register8 *offset_register) {
+	unsigned short source_address = *offset_register + IO_PORT_MEMORY_BASE;
+	load_accumulator_from_address(accumulator, source_address);
+}
+
+/**
+ * /brief Writes the accumulator to the specified IO port.
+ * 
+ * Used to write values to an IO port. The IO port we write to is 
+ * the C'th IO port where C is the value stored within the "C" register/
+ * 
+ * This function implements the following opcodes: 
+ * 		E2
+ * 
+ * @param offset_register: Pointer to the register with the value used as our offset. 
+ * 		This will only be called with the offset_register being Register C.
+ * @param accumulator: Pointer to the accumulator.
+ */
+void write_to_io_port_c(Register8 *offset_register, Register8 *accumulator) {
+	unsigned short source_address = *offset_register + IO_PORT_MEMORY_BASE;
+	write_accumulator_to_address(memory_address, accumulator);
 }
 
 

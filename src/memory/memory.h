@@ -8,6 +8,8 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#define IO_PORT_MEMORY_BASE 0xFF00
+
 extern unsigned char *memory_space;		// We'd like access to system memory. It might be useful
 
 
