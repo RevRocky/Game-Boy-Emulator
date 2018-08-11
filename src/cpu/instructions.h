@@ -13,13 +13,30 @@
 // See instructions.c for more thorough explination of these functions 
 
 // 8 BIT LOADS // 
+
 void load_immediate_byte(Register8 *destination, unsigned char value);
 void load_register(Register8 *destination, Register8 *source);
 void load_register_indirect_destination(Register16 *address_register, Register8 *source);
 void load_register_indirect_source(Register8 *destination, Register16 *address_register);
 void load_accumulator_from_address(Register8 *accumultator, unsigned short memory_address);
 void write_accumulator_to_address(unsigned short memory_address, Register8 *accumulator);
+void load_accumulator_decrement_address_register(Register8 *accumulator, Register16 *address_register);
+void load_accumulator_increment_address_register(Register8 *accumulator, Register16 *address_register);
+void write_accumulator_decrement_address_register(Register16 *address_register, Register8 *accumulator);
+void write_accumulator_increment_address_register(Register16 *address_register, Register8 *accumulator);
+void load_from_io_port_c(Register8 *accumulator, Register8 *offset_register);
+void write_to_io_port_c(Register8 *offset_register, Register8 *accumulator);
+void load_from_io_port_n(Register8 *accumulator, unsigned char offset);
+void write_to_io_port_n(unsigned char offset, Register8 *accumulator);
 
+// 16 BIT LOADS //
+
+void load_immediate_short(Register16 *destination, unsigned short value);
+void load_stack_pointer(Register16 *stack_pointer, Register16 *source_register);
+void load_stack_pointer_offset(Register16 *stack_pointer, short offset, Register8 *flags);
+void write_stack_pointer_to_address(Register16 *stack_pointer, unsigned short address);
+void push(Register16 *stack_pointer, Register16 *source_register);
+void pop(Register16 *stack_pointer, Register16 *destination_register);
 
 // 8-BIT ALU //
 

@@ -101,7 +101,7 @@ void load_register(Register8 *destination, Register8 *source) {
  * @param source: The register containing the value we will write to memory
  */
 void load_register_indirect_destination(Register16 *address_register, Register8 *source) {
-	write_byte(address, *source);
+	write_byte(*address_register, *source);
 }
 
 /**
@@ -201,7 +201,7 @@ void load_accumulator_increment_address_register(Register8 *accumulator, Registe
  * @param address_register: Pointer to the address register. Decremented after load.
  * @param accumulator: Pointer to the accumulator
  */
-void write_accumulator_decrement_address_register(Register16 *address_register, Register8 *accumulaor) {
+void write_accumulator_decrement_address_register(Register16 *address_register, Register8 *accumulator) {
 	load_register_indirect_destination(address_register, accumulator);
 	--address_register;
 }
@@ -217,7 +217,7 @@ void write_accumulator_decrement_address_register(Register16 *address_register, 
  * @param address_register: Pointer to the address register. Incremented after load.
  * @param accumulator: Pointer to the accumulator
  */
-void write_accumulator_increment_address_register(Register16 *address_register, Register8 *accumulaor) {
+void write_accumulator_increment_address_register(Register16 *address_register, Register8 *accumulator) {
 	load_register_indirect_destination(address_register, accumulator);
 	++address_register;
 }
@@ -256,18 +256,174 @@ void load_from_io_port_c(Register8 *accumulator, Register8 *offset_register) {
  */
 void write_to_io_port_c(Register8 *offset_register, Register8 *accumulator) {
 	unsigned short source_address = *offset_register + IO_PORT_MEMORY_BASE;
-	write_accumulator_to_address(memory_address, accumulator);
+	write_accumulator_to_address(source_address, accumulator);
+}
+
+/**
+ * /brief Reads from the N'th IO port.
+ * 
+ * Used to load values from an IO port into the accumulator. The IO port read from is 
+ * the N'th IO port where N is an 8 bit value representing the offset (in the memory address space)
+ * from 0xFF00.
+ * 
+ * This function implements the following opcodes: 
+ * 		E0
+ * 
+ * @param accumulator: Pointer to the accumulator register.
+ * @param offset: Specifies the IO port we are reading form
+ */
+void load_from_io_port_n(Register8 *accumulator, unsigned char offset) {
+	unsigned short source_address = offset + IO_PORT_MEMORY_BASE;
+	load_accumulator_from_address(accumulator, source_address);
+}
+
+/**
+ * /brief Wries the N'th IO port.
+ * 
+ * Used to write values to an IO port into the accumulator. The IO port written to
+ * the N'th IO port where N is an 8 bit value representing the offset (in the memory address space)
+ * from 0xFF00.
+ * 
+ * This function implements the following opcodes
+ * 		F0
+ * 
+ * @param offset: Specifies the IO port we are writing to.
+ * @param accumulator: Pointer to the accumulator register.
+ */
+void write_to_io_port_n(unsigned char offset, Register8 *accumulator) {
+	unsigned short source_address = offset + IO_PORT_MEMORY_BASE;
+	write_accumulator_to_address(source_address, accumulator);
 }
 
 
 /*** 16-BIT LOADS ***/
+
+/**
+ * /brief Standard 16 bit load to register.
+ * 
+ * Loads a 16 bit value to a 16 bit register pair.
+ * 
+ * This function implements the following opcodes:
+ * 		01, 11, 21, 31
+ * 
+ * @param destination: Pointer to the destination register
+ * @param value: A 16 bit immediate value
+ */
+void load_immediate_short(Register16 *destination, unsigned short value) {
+	*destination = value;
+}
+
+/**
+ * /brief Loads the stack pointer with the value in the source register
+ * 
+ * Loads the stack pointer with the value in the source register.
+ * This function is only legal when the source register is the HL register.
+ * 
+ * Note: unlike most uses of the HL register, this does not use indirect 
+ * addressing.
+ * 
+ * This function implements the following opcodes: 
+ *		F9
+ * 
+ * @param stack_pointer: Pointer to the stack... erm... pointer
+ * @param source_register: Pointer to register we are loading from. Only legal if 
+ * 		the HL register
+ */
+void load_stack_pointer(Register16 *stack_pointer, Register16 *source_register) {
+	*stack_pointer = *source_register;
+}
+
+/**
+ * /brief Adds Offset to the current value of the stack pointer
+ * 
+ * Adds the value of offset to the current value of the stack pointer
+ * 
+ * This function implements the following opcodes: 
+ *		F8
+ *
+ * @param stack_pointer: Pointer to the... stack pointer
+ * @param offset: The amount we are adding/subtracting (if negative) to the stack pointer
+ * @param flags: Pointer to the flags register. Due to ambigious specifications we assume that
+ * 		we are to reset the flags register.
+ */
+void load_stack_pointer_offset(Register16 *stack_pointer, short offset, Register8 *flags) {
+	*stack_pointer + offset;
+	*flags = 0x00;
+}
+
+/**
+ * /brief Writes the stack pointer to the supplied address
+ * 
+ * Writes the stack pointer to an address. Since the stack pointer is a 16 bit value 
+ * and our typical memory values are 8 bits, we will write the value in  an 
+ * ascending manner. This means that the upper byte will be placed at the address
+ * "address". We will then increment the address and then write the lower byte.
+ * 
+ * This function implements the following opcodes: 
+ * 		08
+ * 
+ * @param stack_pointer: Pointer to the stack pointer.
+ * @param address: The address we will write the stack pointer to. Technically the 
+ * 		lower byte of the stack pointer will be written here.
+ */
+void write_stack_pointer_to_address(Register16 *stack_pointer, unsigned short address) {
+	unsigned char lower_byte = (unsigned char) *stack_pointer & 0x0F;
+	unsigned char upper_byte = (unsigned char) (*stack_pointer >> 4) & 0x0F;
+
+	// Assuming memory, like most things is going to be little endian...
+	write_byte(address, upper_byte);
+	write_byte(++address, lower_byte);
+}
+
+
+/**
+ * /brief Pushes 16 bit value in supplied register to stack
+ * 
+ * Pushes the value in the source register to the stack. The stack pointer
+ * is then decremented twice.
+ * 
+ * This function implements the following opcodes:
+ * 		F5, C5, D5, E5
+ * 
+ * @param stack_pointer: Pointer to the... stack pointer. Decremented twice in the 
+ * 		operation.
+ * @param source_register: The register we are pushing onto the stack
+ */
+void push(Register16 *stack_pointer, Register16 *source_register) {
+	unsigned char lower_byte = (unsigned char) *source_register & 0x0F;
+	unsigned char upper_byte = (unsigned char) (*source_register >> 4) & 0x0F;
+
+	write_byte((*stack_pointer)--, lower_byte);
+	write_byte((*stack_pointer)--, upper_byte);
+}
+
+/**
+ * /brief Pops a value from the stack into a 16 bit register pair.
+ * 
+ * Pops the value at the "top" of the stack into the supplied 16 bit destination 
+ * register. The SP is incremented twice.
+ * 
+ * This function implements the following opcodes:
+ * 		F1, C1, D1, E1
+ *
+ * @param stack_pointer: Pointer to the stack pointer. Incremented twice during 
+ * 		the operation
+ * @param destination_register: The 16 bit register where the value will be stored.
+ */
+void pop(Register16 *stack_pointer, Register16 *destination_register) {
+	// We store the old PC s.t. the MSNibble will be read first.
+	unsigned short new_destination_value = read_byte((*stack_pointer)++) << 4; 	// Stack is descending
+	new_destination_value = read_byte((*stack_pointer)++) | new_destination_value;	// Read LSB, mask with MSB.
+
+	*destination_register = new_destination_value;
+}
 
 /*** 8-BIT ARITHMETIC / LOGICAL ***/
 
 // Arithmetic Operations // 
 
 /**
- * /brief 8 bit add. To be used when the operand is a register
+ * /brief 8 bit add To be used when the operand is a register
  *
  * The standard 8 bit add. All changes to values are done in place.
  * This function will be used to implement the following opcodes:
@@ -959,7 +1115,7 @@ void indirect_register_add(Register16 *indirect_address_register, Register16 *ot
  * @param other_regisrer: 8 bit value we wish to add to the stack pointer. 
  * @param flags: Pointer to the flags register
  */
-void stack_pointer_add(Register16 *stack_pointer, unsigned char value, Register8 *flags) {
+void stack_pointer_add(Register16 *stack_pointer, char value, Register8 *flags) {
 	unsigned short result = *stack_pointer + value;
 
 	// Setting flags
@@ -1598,6 +1754,9 @@ void jump_carry_set(Register16 *programme_counter, unsigned short address_big_en
  * Jumps the programme counter to the value stored in the indirect addressing 
  * register. Unlike the other jumps, the address stored in this register is little-endian
  * so no conversion is necessary.
+ * 
+ * This function implements the following opcodes: 
+ * 		E9
  *
  * @param programme_counter: Pointer to the programme counter. 
  * @param address_register: Pointer to the address register. The value in this 
@@ -1612,12 +1771,15 @@ void jump_indirect(Register16 *programme_counter, Register16 *address_register) 
  *
  * Performs a jump to a position relative to the current position of the programme 
  * counter.
+ * 
+ * This function implements the following opcodes:
+ * 		18
  *
  * @param programme_counter: Pointer to the programme counter.
  * @param offset: The amount we will add to our programme counter to get 
  * 		our new PC value
  */
-void jump_relative_pos(Register16 *programme_counter, unsigned char offset) {
+void jump_relative_pos(Register16 *programme_counter, char offset) {
 	*programme_counter += offset;
 }
 
@@ -1636,7 +1798,7 @@ void jump_relative_pos(Register16 *programme_counter, unsigned char offset) {
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
+void jump_relative_zero_reset(Register16 *programme_counter, char offset, Register8 *flags) {
 	// Flip bits, mask for zero
 	if (!zero_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1658,7 +1820,7 @@ void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offse
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
+void jump_relative_zero_set(Register16 *programme_counter, char offset, Register8 *flags) {
 	// Flip bits, mask for zero
 	if (zero_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1680,7 +1842,7 @@ void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset,
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
+void jump_relative_carry_reset(Register16 *programme_counter, char offset, Register8 *flags) {
 	// Flip bits, mask for carry
 	if (!carry_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1702,7 +1864,7 @@ void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offs
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_carry_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
+void jump_relative_carry_set(Register16 *programme_counter, char offset, Register8 *flags) {
 	// Flip bits, mask for carry
 	if (carry_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1733,13 +1895,7 @@ void jump_relative_carry_set(Register16 *programme_counter, unsigned char offset
  * with C which assumes numbers are little endian. 
  */
 void call(Register16 *stack_pointer, Register16 *programme_counter, unsigned short call_address_big_endian) {
-	// Decompose Stack Pointer into MSB and LSB.
-	unsigned char programme_counter_msb = (unsigned char) ((*programme_counter >> 4) & 0x0F);
-	unsigned char programme_counter_lsb = (unsigned char) *programme_counter & 0x0F;
-
-	// Save previous stack pointer value to memory and decrement
-	write_byte(programme_counter_lsb, *stack_pointer--);
-	write_byte(programme_counter_msb, *stack_pointer--);
+	push(stack_pointer, programme_counter);
 	
 	unsigned short call_address = to_little_endian(call_address_big_endian);
 
@@ -1869,13 +2025,7 @@ void call_carry_set(Register16 *stack_pointer, Register16 *programme_counter, un
  * @param offset: The offset from 0x0000 the programme will resume execution at. 
  */
 void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned char offset) {
-	// Decompose Stack Pointer into MSB and LSB.
-	unsigned char programme_counter_msb = (unsigned char) ((*programme_counter >> 4) & 0x0F);
-	unsigned char programme_counter_lsb = (unsigned char) *programme_counter & 0x0F;
-
-	// Save previous stack pointer value to memory and decrement
-	write_byte(programme_counter_lsb, *stack_pointer--);
-	write_byte(programme_counter_msb, *stack_pointer--);
+	push(stack_pointer, programme_counter);
 
 	*programme_counter = offset;	// The offset is from 0x0000 so we can simply supply the offset.
 }
@@ -1896,11 +2046,7 @@ void restart(Register16 *stack_pointer, Register16 *programme_counter, unsigned 
  * @param programme_counter: Pointer to the programme counter 
  */
 void return_unconditional(Register16 *stack_pointer, Register16 *programme_counter) {
-	// We store the old PC s.t. the MSNibble will be read first.
-	unsigned short new_programme_counter = read_byte((*stack_pointer)++) << 4; 	// Stack is descending
-	new_programme_counter = read_byte((*stack_pointer)++) | new_programme_counter;	// Read LSNibble, mask with MSNibble
-
-	*programe_counter = new_programme_counter;
+	pop(stack_pointer, programme_counter);
 }
 
 /**
@@ -1918,7 +2064,7 @@ void return_unconditional(Register16 *stack_pointer, Register16 *programme_count
  */
 void return_zero_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
 	if (!zero_flag_set(flags)) {
-		return_unconditional(stack_pointer, programe_counter);
+		pop(stack_pointer, programme_counter);
 	}
 }
 
@@ -1937,7 +2083,7 @@ void return_zero_reset(Register16 *stack_pointer, Register16 *programme_counter,
  */
 void return_zero_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
 	if (zero_flag_set(flags)) {
-		return_unconditional(stack_pointer, programe_counter);
+		pop(stack_pointer, programme_counter);
 	}
 }
 
@@ -1956,7 +2102,7 @@ void return_zero_set(Register16 *stack_pointer, Register16 *programme_counter, R
  */
 void return_carry_reset(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
 	if (!carry_flag_set(flags)) {
-		return_unconditional(stack_pointer, programe_counter);
+		pop(stack_pointer, programme_counter);
 	}
 }
 
@@ -1975,7 +2121,7 @@ void return_carry_reset(Register16 *stack_pointer, Register16 *programme_counter
  */
 void return_carry_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
 	if (zero_carry_set(flags)) {
-		return_unconditional(stack_pointer, programe_counter);
+		pop(stack_pointer, programme_counter);
 	}
 }
 
