@@ -53,6 +53,7 @@ void test_nibble_swap();
 void test_complements();
 
 void check_result(TestResult *expected, TestResult *actual);
+TestResult create_test_result(Register8 result, Register8 flags);
 void check_result_16(TestResult16 *expected, TestResult16 *actual);
 
 unsigned char *memory_space = NULL;		// Since it's defined in global scope, it must be constant
@@ -779,6 +780,92 @@ void test_decrement_16() {
 	free(registers);
 }
 
+// Test Left Rotate
+void test_rotate_left() {
+	CPUState *registers = initialise_registers();
+
+	printf("\nTesting Left Rotates (8 Bit)\n");
+	printf("Roating Value 0x80, 7 bit to carry");
+
+	load_immediate_byte(&(registers->B), 0x80);
+	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
+
+	TestResult expected = create_test_result(0x01, 0x10);
+	TestResult actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotating Value 0x01, Expect Carry to be 0");
+	
+	load_immediate_byte(&(registers->B), 0x01);
+	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
+
+	TestResult expected = create_test_result(0x02, 0x00);
+	TestResult actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate Indirect Value, Carry As Archive");
+	memory_space[34] = 0x80;
+	registers->HL = 34;
+	
+	rotate_indirect_left_carry_archive(&(registers->HL), &(registers->F));
+
+	TestResult expected = create_test_result(0x01, 0x10);
+	TestResult actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotating Indirect Value 0x01, Expect Carry to be 0");
+	
+	memory_space[34] = 0x01;
+	registers->HL = 34;
+	rotate_indirect_left_carry_archive(&(registers->HL), &(registers->F));
+
+	TestResult expected = create_test_result(0x02, 0x00);
+	TestResult actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x80 through the Carry Bit, Carry at 0");
+	registers->F = 0x00;
+
+	load_immediate_byte(&(registers->B), 0x80);
+	rotate_register_left_through_carry(&(registers->B), &(registers->F));
+
+	TestResult expected = create_test_result(0x00, 0x10);
+	TestResult actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x80 through the Carry Bit, Carry at 1");
+	registers->F = 0x10;
+
+	load_immediate_byte(&(registers->B), 0x80);
+	rotate_register_left_through_carry(&(registers->B), &(registers->F));
+
+	TestResult expected = create_test_result(0x01, 0x10);
+	TestResult actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x80 through the Carry Bit, Carry at 0 (Indirect)");
+	registers->F = 0x00;
+	memory_space[34] = 0x80;
+	registers->HL = 34;
+
+	rotate_indirect_left_through_carry(&(registers->HL), &(registers->F));
+
+	TestResult expected = create_test_result(0x00, 0x10);
+	TestResult actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x80 through the Carry Bit, Carry at 1 (Indirect)");
+	registers->F = 0x10;
+	memory_space[34] = 0x80;
+	registers->HL = 34;
+
+	rotate_indirect_left_through_carry(&(registers->HL), &(registers->F));
+
+	TestResult expected = create_test_result(0x01, 0x10);
+	TestResult actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+}
+
 // Testing some nibble swaps
 void test_nibble_swap() {
 	TestResult expected;	// Holds the expected results
@@ -878,6 +965,21 @@ void check_result(TestResult *expected, TestResult *actual) {
 }
 
 /**
+ * /brief Constructs a test result struct.
+ * 
+ * Creates a TestResult struct with the desired result and flags
+ * fields
+ * 
+ * @param result: The result of a test operation, expected or actual
+ * @param flags: The flags after a test result, expected or actual
+ * 
+ * @returns A well formed test result struct
+ */
+TestResult create_test_result(Register8 result, Register8 flags) {
+	return (TestResult){.result = result, .flags = flags};
+}
+
+/**
  * /brief Checks the result of a 16 bit alu operation
  *
  * Checks both the result and flags of a 16 bit ALU operation to ensure
@@ -905,6 +1007,7 @@ void check_result_16(TestResult16 *expected, TestResult16 *actual) {
 		printf("SUCCESS!\n");
 	}
 }
+
 
 
 
