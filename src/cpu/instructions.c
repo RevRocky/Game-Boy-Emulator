@@ -1248,7 +1248,7 @@ void rotate_indirect_left_through_carry(Register16 *address_register, Register8 
 	unsigned char new_carry = (value_at_address & 0x80) >> 3;	// Move bit 7 into carry flag pos
 
 	value_at_address = (value_at_address << 1) | old_carry;	// Shift and include archived carry bit.
-	*flags = new_carry | ((value_at_address == 0) << 7);
+	*flags = new_carry | ((value_at_address == 0) << 7);	
 
 	write_byte(*address_register, value_at_address);
 }
@@ -1260,8 +1260,8 @@ void rotate_indirect_left_through_carry(Register16 *address_register, Register8 
  * This function implements the following opcodes:
  *		0F, CB 0F, CB 08, CB 09, CB 0A, CB 0B, CB 0C, CB 0D
  *
- * @param target_register: The register whose value we will be rotating
- * @param flags: Pointer to the flags register
+ * @params target_register: The register whose value we will be rotating
+ * @params flags: Pointer to the flags register
  */
 void rotate_register_right_carry_archive(Register8 *target_register, Register8 *flags) {
 	// Do the rotate
@@ -1269,7 +1269,7 @@ void rotate_register_right_carry_archive(Register8 *target_register, Register8 *
 
 	// Set the flags register
 	*flags = (*target_register == 0) << 7;			// Setting 0 bit
-	*flags |= ((*target_register && 0x80) << 4);		// Moving 0 bit to carry bit
+	*flags |= (*target_register & 0x80) >> 3;		// Move old LSB into carry
 }
 
 /**
@@ -1291,7 +1291,7 @@ void rotate_indirect_right_carry_archive(Register16 *address_register, Register8
 
 	// Set the flags register
 	*flags = (value_at_address == 0) << 7;			// Setting 0 bit
-	*flags |= ((value_at_address && 0x80) << 4);	// Moving 0 bit to carry bit
+	*flags |= ((value_at_address & 0x80) >> 3);		// Moving old LSB to carry bit
 
 	// Write it back to memory.
 	write_byte(*address_register, value_at_address);
@@ -1317,7 +1317,7 @@ void rotate_register_right_through_carry(Register8 *target_register, Register8 *
 }
 
 /**
- * /brief Left Rotates value in memory address contained in the "HL" address register.
+ * /brief Right Rotates value in memory address contained in the "HL" address register.
  * This rotate goes through the carry bit. 
  * 
  * Rotates the value stored in the supplied memory address
@@ -1333,7 +1333,7 @@ void rotate_indirect_right_through_carry(Register16 *address_register, Register8
 	unsigned char old_carry = (*flags & 0x10) << 3;				// Move old carry to 7 position
 	unsigned char new_carry = (value_at_address & 0x01) << 4;	// Move bit 0 into carry flag pos
 
-	value_at_address = (value_at_address << 1) | old_carry;	// Shift and include archived carry bit.
+	value_at_address = (value_at_address >> 1) | old_carry;	// Shift and include archived carry bit.
 	*flags = new_carry | ((value_at_address == 0) << 7);
 
 	write_byte(*address_register, value_at_address);

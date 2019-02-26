@@ -54,6 +54,7 @@ void test_increment_16();
 void test_decrement_16();
 
 void test_rotate_left();
+void test_rotate_right();
 void test_nibble_swap();
 void test_complements();
 
@@ -88,6 +89,7 @@ void main() {
 
 	printf("Test Rotates & Swaps\n\n");
 	test_rotate_left();
+	test_rotate_right();
 	test_nibble_swap();
 
 	free(memory_space);
@@ -802,7 +804,8 @@ void test_rotate_left() {
 
 	printf("\nTesting Left Rotates (8 Bit)\n");
 	printf("Roating Value 0x80, 7 bit to carry\n");
-
+	
+	registers->F = 0x00;
 	load_immediate_byte(&(registers->B), 0x80);
 	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
 
@@ -811,7 +814,7 @@ void test_rotate_left() {
 	check_result(&expected, &actual);
 
 	printf("Rotating Value 0x01, Expect Carry to be 0\n");
-	
+	registers->F = 0x00;
 	load_immediate_byte(&(registers->B), 0x01);
 	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
 
@@ -820,6 +823,7 @@ void test_rotate_left() {
 	check_result(&expected, &actual);
 
 	printf("Rotate Indirect Value, Carry As Archive\n");
+	registers->F = 0x00;
 	memory_space[34] = 0x80;
 	registers->HL = 34;
 	
@@ -830,7 +834,7 @@ void test_rotate_left() {
 	check_result(&expected, &actual);
 
 	printf("Rotating Indirect Value 0x01, Expect Carry to be 0\n");
-	
+	registers->F = 0x00;
 	memory_space[34] = 0x01;
 	registers->HL = 34;
 	rotate_indirect_left_carry_archive(&(registers->HL), &(registers->F));
@@ -880,6 +884,99 @@ void test_rotate_left() {
 	expected = create_test_result(0x01, 0x10);
 	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
+	free(registers);
+}
+
+// Test Right Rotate
+void test_rotate_right() {
+	TestResult expected;
+	TestResult actual;
+
+	CPUState *registers = initialise_registers();
+
+	printf("\nTesting Right Rotates (8 Bit)\n");
+	printf("Roating Value 0x11, 0 bit to carry\n");
+
+	load_immediate_byte(&(registers->B), 0x11);
+	rotate_register_right_carry_archive(&(registers->B), &(registers->F));
+
+	expected = create_test_result(0x88, 0x10);
+	actual = create_test_result(registers->B, registers->F);
+	
+	check_result(&expected, &actual);
+
+	printf("Rotating Value 0x02, Expect Carry to be 0\n");
+	
+	load_immediate_byte(&(registers->B), 0x02);
+	rotate_register_right_carry_archive(&(registers->B), &(registers->F));
+
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate Indirect Value 0x11, Carry As 0 bit\n");
+	
+	memory_space[34] = 0x11;
+	registers->HL = 34;
+	
+	rotate_indirect_right_carry_archive(&(registers->HL), &(registers->F));
+
+	expected = create_test_result(0x88, 0x10);
+	actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotating Indirect Value 0x02, Expect Carry to be 0\n");
+	
+	memory_space[34] = 0x02;
+	registers->HL = 34;
+	rotate_indirect_right_carry_archive(&(registers->HL), &(registers->F));
+
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x01 through the Carry Bit, Carry at 0\n");
+	
+
+	load_immediate_byte(&(registers->B), 0x01);
+	rotate_register_right_through_carry(&(registers->B), &(registers->F));
+
+	expected = create_test_result(0x00, 0x90);		// Zero and Carry are Set
+	actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x01 through the Carry Bit, Carry at 1\n");
+	registers->F = 0x10;
+
+	load_immediate_byte(&(registers->B), 0x01);
+	rotate_register_right_through_carry(&(registers->B), &(registers->F));
+
+	expected = create_test_result(0x80, 0x10);
+	actual = create_test_result(registers->B, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x01 through the Carry Bit, Carry at 0 (Indirect)\n");
+	registers->F = 0x00;
+	memory_space[34] = 0x01;
+	registers->HL = 34;
+
+	rotate_indirect_right_through_carry(&(registers->HL), &(registers->F));
+
+	expected = create_test_result(0x00, 0x90);		// Zero and Carry are set
+	actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Rotate 0x01 through the Carry Bit, Carry at 1 (Indirect)\n");
+	registers->F = 0x10;
+	memory_space[34] = 0x01;
+	registers->HL = 34;
+
+	rotate_indirect_right_through_carry(&(registers->HL), &(registers->F));
+
+	expected = create_test_result(0x80, 0x10);
+	actual = create_test_result(memory_space[34], registers->F);
+	check_result(&expected, &actual);
+	free(registers);
 }
 
 // Testing some nibble swaps
