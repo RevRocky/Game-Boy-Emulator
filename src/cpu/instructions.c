@@ -1400,7 +1400,7 @@ void arithmetic_shift_register_right(Register8 *target_register, Register8 *flag
 	unsigned char most_sig_bit = *target_register & 0x80;
 
 	// Now we do a standard shift
-	*flags = (*target_register & 0x01) << 1;	// Set carry flag with LSB
+	*flags = (*target_register & 0x01) << 4;	// Set carry flag with LSB
 	*target_register = (*target_register >> 1) | most_sig_bit;
 	*flags |= (*target_register == 0) << 7;		// Set zero flag
 }
@@ -1426,7 +1426,7 @@ void arithmetic_shift_indirect_right(Register16 *address_register, Register8 *fl
 	unsigned char most_sig_bit = value_at_address & 0x80;
 
 	// Now we do a standard shift
-	*flags = (value_at_address & 0x01) << 3;	// Set carry flag with LSB
+	*flags = (value_at_address & 0x01) << 4;	// Set carry flag with LSB
 	value_at_address = (value_at_address >> 1) | most_sig_bit;
 	*flags |= (value_at_address == 0) << 7;		// Set zero flag
 	
@@ -1448,7 +1448,7 @@ void arithmetic_shift_indirect_right(Register16 *address_register, Register8 *fl
  */
 void logical_shift_register_right(Register8 *target_register, Register8 *flags) {
 	// Preserving the LSB in the carry flag
-	*flags = (*target_register & 0x01) << 3;	// Move >SB to the carry position
+	*flags = (*target_register & 0x01) << 4;	// Move >SB to the carry position
 	*target_register = *target_register >> 1;	// Perform the shift
 	*flags |= (*target_register == 0) << 7;		// Check if result is zero
 }
@@ -1471,7 +1471,7 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
 	unsigned char value_at_address = read_byte(*address_register);
 
 	// Preserving the MSB in the carry flag
-	*flags = (value_at_address & 0x01) << 3;	// Move LSB to the carry position
+	*flags = (value_at_address & 0x01) << 4;	// Move LSB to the carry position
 	value_at_address = value_at_address >> 1;	// Perform the shift
 	*flags |= (value_at_address == 0) << 7;		// Check if result is zero
 
