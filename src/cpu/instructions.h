@@ -131,7 +131,7 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
 // BIT OPERANDS //
 
 // Test
-void test_bit_register(Register8 *target_register, unsigned char *bit, Register8 *flags);
+void test_bit_register(Register8 *target_register, unsigned char bit, Register8 *flags);
 void test_bit_indirect(Register16 *address_register, unsigned char bit, Register8 *flags);
 
 // Set

@@ -12,6 +12,10 @@
 
 #define GP_REGISTER_COUNT 6
 
+// Global variables to track amount of passing and failed tests
+int successes;
+int failures;
+
 /**
  * /brief Associates register and flag values from a test
  *
@@ -49,6 +53,7 @@ void test_add_16();
 void test_increment_16();
 void test_decrement_16();
 
+void test_rotate_left();
 void test_nibble_swap();
 void test_complements();
 
@@ -61,6 +66,9 @@ unsigned char *memory_space = NULL;		// Since it's defined in global scope, it m
 void main() {
 	memory_space = calloc(50, sizeof(char));
 	
+	successes = 0;
+	failures = 0;
+
 	printf("Testing 8-bit ALU\n\n");
 	test_adds();
 	test_subtracts();
@@ -76,10 +84,15 @@ void main() {
 	test_increment_16();
 	test_decrement_16();
 
-	test_nibble_swap();
 	test_complements();
 
+	printf("Test Rotates & Swaps\n\n");
+	test_rotate_left();
+	test_nibble_swap();
+
 	free(memory_space);
+
+	printf("\n\nTESTING COMPLETE!\n\t%d Successes\n\t%d Failures\n", successes, failures);
 }
 
 // Guess what? It tests the add operations. 
@@ -782,87 +795,90 @@ void test_decrement_16() {
 
 // Test Left Rotate
 void test_rotate_left() {
+	TestResult expected;
+	TestResult actual;
+
 	CPUState *registers = initialise_registers();
 
 	printf("\nTesting Left Rotates (8 Bit)\n");
-	printf("Roating Value 0x80, 7 bit to carry");
+	printf("Roating Value 0x80, 7 bit to carry\n");
 
 	load_immediate_byte(&(registers->B), 0x80);
 	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
 
-	TestResult expected = create_test_result(0x01, 0x10);
-	TestResult actual = create_test_result(registers->B, registers->F);
+	expected = create_test_result(0x01, 0x10);
+	actual = create_test_result(registers->B, registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotating Value 0x01, Expect Carry to be 0");
+	printf("Rotating Value 0x01, Expect Carry to be 0\n");
 	
 	load_immediate_byte(&(registers->B), 0x01);
 	rotate_register_left_carry_archive(&(registers->B), &(registers->F));
 
-	TestResult expected = create_test_result(0x02, 0x00);
-	TestResult actual = create_test_result(registers->B, registers->F);
+	expected = create_test_result(0x02, 0x00);
+	actual = create_test_result(registers->B, registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotate Indirect Value, Carry As Archive");
+	printf("Rotate Indirect Value, Carry As Archive\n");
 	memory_space[34] = 0x80;
 	registers->HL = 34;
 	
 	rotate_indirect_left_carry_archive(&(registers->HL), &(registers->F));
 
-	TestResult expected = create_test_result(0x01, 0x10);
-	TestResult actual = create_test_result(memory_space[34], registers->F);
+	expected = create_test_result(0x01, 0x10);
+	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotating Indirect Value 0x01, Expect Carry to be 0");
+	printf("Rotating Indirect Value 0x01, Expect Carry to be 0\n");
 	
 	memory_space[34] = 0x01;
 	registers->HL = 34;
 	rotate_indirect_left_carry_archive(&(registers->HL), &(registers->F));
 
-	TestResult expected = create_test_result(0x02, 0x00);
-	TestResult actual = create_test_result(memory_space[34], registers->F);
+	expected = create_test_result(0x02, 0x00);
+	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotate 0x80 through the Carry Bit, Carry at 0");
+	printf("Rotate 0x80 through the Carry Bit, Carry at 0\n");
 	registers->F = 0x00;
 
 	load_immediate_byte(&(registers->B), 0x80);
 	rotate_register_left_through_carry(&(registers->B), &(registers->F));
 
-	TestResult expected = create_test_result(0x00, 0x10);
-	TestResult actual = create_test_result(registers->B, registers->F);
+	expected = create_test_result(0x00, 0x90);		// Zero and Carry are Set
+	actual = create_test_result(registers->B, registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotate 0x80 through the Carry Bit, Carry at 1");
+	printf("Rotate 0x80 through the Carry Bit, Carry at 1\n");
 	registers->F = 0x10;
 
 	load_immediate_byte(&(registers->B), 0x80);
 	rotate_register_left_through_carry(&(registers->B), &(registers->F));
 
-	TestResult expected = create_test_result(0x01, 0x10);
-	TestResult actual = create_test_result(registers->B, registers->F);
+	expected = create_test_result(0x01, 0x10);
+	actual = create_test_result(registers->B, registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotate 0x80 through the Carry Bit, Carry at 0 (Indirect)");
+	printf("Rotate 0x80 through the Carry Bit, Carry at 0 (Indirect)\n");
 	registers->F = 0x00;
 	memory_space[34] = 0x80;
 	registers->HL = 34;
 
 	rotate_indirect_left_through_carry(&(registers->HL), &(registers->F));
 
-	TestResult expected = create_test_result(0x00, 0x10);
-	TestResult actual = create_test_result(memory_space[34], registers->F);
+	expected = create_test_result(0x00, 0x90);		// Zero and Carry are set
+	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
 
-	printf("Rotate 0x80 through the Carry Bit, Carry at 1 (Indirect)");
+	printf("Rotate 0x80 through the Carry Bit, Carry at 1 (Indirect)\n");
 	registers->F = 0x10;
 	memory_space[34] = 0x80;
 	registers->HL = 34;
 
 	rotate_indirect_left_through_carry(&(registers->HL), &(registers->F));
 
-	TestResult expected = create_test_result(0x01, 0x10);
-	TestResult actual = create_test_result(memory_space[34], registers->F);
+	expected = create_test_result(0x01, 0x10);
+	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
 }
 
@@ -953,14 +969,16 @@ void check_result(TestResult *expected, TestResult *actual) {
 
 	// If test_success is 
 	if (!test_success) {
-		printf("FAILURE :_(\n");
-		printf("\tResult:\n\t\tExpected: %X\n\t\tActual: %X\n", 
+		++failures;
+		printf("\tFAILURE :_(\n");
+		printf("\tResult:\n\t\tExpected: %X\n\t\tActual: %X\n\n", 
 			expected->result, actual->result);
-		printf("\tFlags:\n\t\tExpected: %X\n\t\tActual: %X\n",
+		printf("\tFlags:\n\t\tExpected: %X\n\t\tActual: %X\n\n",
 			expected->flags, actual->flags);
 	}
 	else {
-		printf("SUCCESS!\n");
+		++successes;
+		printf("\tSUCCESS!\n\n");
 	}
 }
 
@@ -997,14 +1015,16 @@ void check_result_16(TestResult16 *expected, TestResult16 *actual) {
 
 	// If test_success is 
 	if (!test_success) {
-		printf("FAILURE :_(\n");
-		printf("\tResult:\n\t\tExpected: %X\n\t\tActual: %X\n", 
+		++failures;
+		printf("\tFAILURE :_(\n");
+		printf("\tResult:\n\t\tExpected: %X\n\t\tActual: %X\n\n", 
 			expected->result, actual->result);
-		printf("\tFlags:\n\t\tExpected: %X\n\t\tActual: %X\n",
+		printf("\tFlags:\n\t\tExpected: %X\n\t\tActual: %X\n\n",
 			expected->flags, actual->flags);
 	}
 	else {
-		printf("SUCCESS!\n");
+		++successes;
+		printf("\tSUCCESS!\n\n");
 	}
 }
 

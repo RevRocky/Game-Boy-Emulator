@@ -1115,7 +1115,7 @@ void indirect_register_add(Register16 *indirect_address_register, Register16 *ot
  * @param other_regisrer: 8 bit value we wish to add to the stack pointer. 
  * @param flags: Pointer to the flags register
  */
-void stack_pointer_add(Register16 *stack_pointer, char value, Register8 *flags) {
+void stack_pointer_add(Register16 *stack_pointer, unsigned char value, Register8 *flags) {
 	unsigned short result = *stack_pointer + value;
 
 	// Setting flags
@@ -1490,18 +1490,18 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
  * This function implements the following op codes
  * CB 47, CB 40, CB 41, CB 42, CB 43, CB 44, CB 45
  * 
- * @param target_value: A direct reference to the value we wish to check 
+ * @param target_value: The register containing the value we are testing
  * @param bit: The bit we wish to test. Must be between 0-7 (inclusive)
  * @param flags: Pointer to the flags register
  */
-void test_bit_register(unsigned char target_value, unsigned char bit, Register8 *flags) {
+void test_bit_register(Register8 *target_register, unsigned char bit, Register8 *flags) {
 	// As mentioned previously, we abort if we've erroneous operands.
 	if (bit < 0 || 7 < bit) {
-		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", target_value, bit);
+		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", *target_register, bit);
 		abort();
 	}
 	// implicit else. 
-	target_value = target_value >> bit; // Assummes bit 0 is LSB
+	unsigned char target_value = *target_register >> bit; // Assummes bit 0 is LSB
 	*flags = 0x20 || (target_value == 0);	// Half carry always set, Z if bit is 0
 }
 
@@ -1525,12 +1525,11 @@ void test_bit_indirect(Register16 *address_register, unsigned char bit, Register
 	
 	// As mentioned previously, we abort if we've erroneous operands.
 	if (bit < 0 || 7 < bit) {
-		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", address_register, bit);
+		fprintf(stderr, "ILLEGAL OPERATION: Called BIT %d, %d\n", *address_register, bit);
 		abort();
 	}
 	// Implicit else.
-	unsigned char target_value = read_byte(address_register);
-
+	unsigned char target_value = read_byte(*address_register);
 	 
 	target_value = target_value >> bit; // Assummes bit 0 is LSB
 	*flags = 0x20 || (target_value == 0);	// Half carry always set, Z if bit is 0
@@ -1779,7 +1778,7 @@ void jump_indirect(Register16 *programme_counter, Register16 *address_register) 
  * @param offset: The amount we will add to our programme counter to get 
  * 		our new PC value
  */
-void jump_relative_pos(Register16 *programme_counter, char offset) {
+void jump_relative_pos(Register16 *programme_counter, unsigned char offset) {
 	*programme_counter += offset;
 }
 
@@ -1798,7 +1797,7 @@ void jump_relative_pos(Register16 *programme_counter, char offset) {
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_zero_reset(Register16 *programme_counter, char offset, Register8 *flags) {
+void jump_relative_zero_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for zero
 	if (!zero_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1820,7 +1819,7 @@ void jump_relative_zero_reset(Register16 *programme_counter, char offset, Regist
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_zero_set(Register16 *programme_counter, char offset, Register8 *flags) {
+void jump_relative_zero_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for zero
 	if (zero_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1842,7 +1841,7 @@ void jump_relative_zero_set(Register16 *programme_counter, char offset, Register
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_carry_reset(Register16 *programme_counter, char offset, Register8 *flags) {
+void jump_relative_carry_reset(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for carry
 	if (!carry_flag_set(flags)) {
 		*programme_counter += offset;
@@ -1864,7 +1863,7 @@ void jump_relative_carry_reset(Register16 *programme_counter, char offset, Regis
  *		our new value.
  * @param flags: Pointer to the flags register.
  */
-void jump_relative_carry_set(Register16 *programme_counter, char offset, Register8 *flags) {
+void jump_relative_carry_set(Register16 *programme_counter, unsigned char offset, Register8 *flags) {
 	// Flip bits, mask for carry
 	if (carry_flag_set(flags)) {
 		*programme_counter += offset;
@@ -2120,7 +2119,7 @@ void return_carry_reset(Register16 *stack_pointer, Register16 *programme_counter
  * @param flags: Pointer to the flags register
  */
 void return_carry_set(Register16 *stack_pointer, Register16 *programme_counter, Register8 *flags) {
-	if (zero_carry_set(flags)) {
+	if (carry_flag_set(flags)) {
 		pop(stack_pointer, programme_counter);
 	}
 }

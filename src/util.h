@@ -1,4 +1,4 @@
-#include "../cpu/register.h"
+#include "./cpu/register.h"
 
 #ifndef UTIL_H
 #define UTIL_H
