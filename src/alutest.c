@@ -55,6 +55,8 @@ void test_decrement_16();
 
 void test_rotate_left();
 void test_rotate_right();
+void test_left_shifts();
+void test_right_shifts();
 void test_nibble_swap();
 void test_complements();
 
@@ -90,6 +92,8 @@ void main() {
 	printf("Test Rotates & Swaps\n\n");
 	test_rotate_left();
 	test_rotate_right();
+	test_left_shifts();
+	test_right_shifts();
 	test_nibble_swap();
 
 	free(memory_space);
@@ -977,6 +981,158 @@ void test_rotate_right() {
 	actual = create_test_result(memory_space[34], registers->F);
 	check_result(&expected, &actual);
 	free(registers);
+}
+
+void test_left_shifts() {
+	TestResult expected;
+	TestResult actual;
+
+	CPUState *registers = initialise_registers();
+
+	printf("\nTesting Left Shifts\n");
+
+	printf("Shift 0x88 Left by One, Expect Carry Raised\n");
+	load_immediate_byte(&(registers->A), 0x88);
+	shift_register_left(&(registers->A), &(registers->F));
+	expected = create_test_result(0x10, 0x10);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Shift 0x80 Left by One, Expect Carry, Zero Raised\n");
+	load_immediate_byte(&(registers->A), 0x80);
+	shift_register_left(&(registers->A), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Shift 0x01 Left by One, Expect No Flags Raised\n");
+	load_immediate_byte(&(registers->A), 0x01);
+	shift_register_left(&(registers->A), &(registers->F));
+	expected = create_test_result(0x02, 0x00);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Shift 0x80 Left By One, Expect Carry, Zero Raised (Indirect)\n");
+	memory_space[35] = 0x80;
+	registers->HL = 35;
+	shift_indirect_left(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(memory_space[35], registers->F);
+	check_result(&expected, &actual);
+
+	printf("Shift 0x01 Left By One, Expect No Flags Raised (Indirect)\n");
+	memory_space[35] = 0x01;
+	registers->HL = 35;
+	shift_indirect_left(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x02, 0x00);
+	actual = create_test_result(memory_space[35], registers->F);
+	check_result(&expected, &actual);
+
+	free(registers);
+}
+
+void test_right_shifts() {
+	TestResult expected;
+	TestResult actual;
+
+	CPUState *registers = initialise_registers();
+	
+	printf("\nTesting Right Shifts (Arithmetic)\n");
+
+	printf("Shift 0x02 Right (Arithmetic), Expect No Flags Set\n");
+	load_immediate_byte(&(registers->A), 0x02);
+	arithmetic_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x01 Right (Arithmetic), Expect Zero, Carry Flags Set\n");
+	load_immediate_byte(&(registers->A), 0x01);
+	arithmetic_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0xF0 Right (Arithmetic). MSB to propagate\n");
+	load_immediate_byte(&(registers->A), 0xF0);
+	arithmetic_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0xF8, 0x00);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x02 Right (Arithmetic), Expect No Flags Set (Indirect)\n");
+	memory_space[23] = 0x02;
+	registers->HL = 23;
+	arithmetic_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x01 Right (Arithmetic), Expect Zero, Carry Flags Set (Indirect)\n");
+	memory_space[23] = 0x01;
+	registers->HL = 23;
+	arithmetic_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0xF0 Right (Arithmetic), Expect MSB To Propagate (Indirect)\n");
+	memory_space[23] = 0xF0;
+	registers->HL = 23;
+	arithmetic_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0xF8, 0x00);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("\nTesting Right Shifts (Logical)\n");
+
+	printf("Shift 0x02 Right (Logical), Expect No Flags Set\n");
+	load_immediate_byte(&(registers->A), 0x02);
+	logical_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x01 Right (Logical), Expect Zero, Carry Flags Set\n");
+	load_immediate_byte(&(registers->A), 0x01);
+	logical_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0xF0 Right (Logical). MSB will not propgagate\n");
+	load_immediate_byte(&(registers->A), 0xF0);
+	logical_shift_register_right(&(registers->A), &(registers->F));
+	expected = create_test_result(0x78, 0x00);
+	actual = create_test_result(registers->A, registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x02 Right (Logical), Expect No Flags Set (Indirect)\n");
+	memory_space[23] = 0x02;
+	registers->HL = 23;
+	logical_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x01, 0x00);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0x01 Right (Logical), Expect Zero, Carry Flags Set (Indirect)\n");
+	memory_space[23] = 0x01;
+	registers->HL = 23;
+	logical_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x00, 0x90);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	printf("Shift 0xF0 Right (Logical), MSB will not propagate (Indirect)\n");
+	memory_space[23] = 0xF0;
+	registers->HL = 23;
+	logical_shift_indirect_right(&(registers->HL), &(registers->F));
+	expected = create_test_result(0x78, 0x00);
+	actual = create_test_result(memory_space[23], registers->F);
+	check_result(&(expected), &(actual));
+
+	free(registers);
+
 }
 
 // Testing some nibble swaps
