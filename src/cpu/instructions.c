@@ -1470,7 +1470,7 @@ void logical_shift_register_right(Register8 *target_register, Register8 *flags) 
 void logical_shift_indirect_right(Register16 *address_register, Register8 *flags) {
 	unsigned char value_at_address = read_byte(*address_register);
 
-	// Preserving the MSB in the carry flag
+	// Preserving the LSB in the carry flag
 	*flags = (value_at_address & 0x01) << 4;	// Move LSB to the carry position
 	value_at_address = value_at_address >> 1;	// Perform the shift
 	*flags |= (value_at_address == 0) << 7;		// Check if result is zero
@@ -1487,6 +1487,9 @@ void logical_shift_indirect_right(Register16 *address_register, Register8 *flags
  * value of any bit within a word. Note, if bit is 
  * between 0 and 7 (inclusive), this function will cause the 
  * programme to abort. 
+ * 
+ * Regardless of the operation's result, the half carry is always thrown
+ * 
  * This function implements the following op codes
  * CB 47, CB 40, CB 41, CB 42, CB 43, CB 44, CB 45
  * 
@@ -1501,8 +1504,8 @@ void test_bit_register(Register8 *target_register, unsigned char bit, Register8 
 		abort();
 	}
 	// implicit else. 
-	unsigned char target_value = *target_register >> bit; // Assummes bit 0 is LSB
-	*flags = 0x20 || (target_value == 0);	// Half carry always set, Z if bit is 0
+	unsigned char isolated_test_bit = *target_register << (7 - bit); 		// Assummes bit 0 is LSB
+	*flags = 0x20 | (isolated_test_bit ^ (0x80 | isolated_test_bit));		// X xor 1 is true iff X == 0
 }
 
 /*
@@ -1531,9 +1534,8 @@ void test_bit_indirect(Register16 *address_register, unsigned char bit, Register
 	// Implicit else.
 	unsigned char target_value = read_byte(*address_register);
 	 
-	target_value = target_value >> bit; // Assummes bit 0 is LSB
-	*flags = 0x20 || (target_value == 0);	// Half carry always set, Z if bit is 0
-
+	unsigned char isolated_test_bit = target_value << (7 - bit);  		// Assummes bit 0 is LSB
+	*flags = 0x20 | (isolated_test_bit ^ (0x80 | isolated_test_bit));	// X xor 1 is true iff X == 0
 }
 
 /**
