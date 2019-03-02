@@ -58,6 +58,8 @@ void test_rotate_right();
 void test_left_shifts();
 void test_right_shifts();
 void test_nibble_swap();
+
+void test_test_bit();
 void test_complements();
 
 void check_result(TestResult *expected, TestResult *actual);
@@ -87,14 +89,16 @@ void main() {
 	test_increment_16();
 	test_decrement_16();
 
-	test_complements();
-
 	printf("Test Rotates & Swaps\n\n");
 	test_rotate_left();
 	test_rotate_right();
 	test_left_shifts();
 	test_right_shifts();
 	test_nibble_swap();
+
+	printf("Test Bit Instructions\n\n");
+	test_test_bit();
+	test_complements();
 
 	free(memory_space);
 
@@ -1169,6 +1173,80 @@ void test_nibble_swap() {
 	free(registers);
 }
 
+// Testing the instructions that.. well test our bits.
+void test_test_bit() {
+	TestResult expected;
+	TestResult actual;
+
+	CPUState *registers = initialise_registers();
+
+	printf("\nTest Bit Direct\n");
+
+	// Note: All we are concerened about are the flag values
+	printf("Register A is 0x05, test bit 7. Not set so Zero is raised\n");
+	load_immediate_byte(&(registers->A), 0x05);
+	test_bit_register(&(registers->A), 7, &(registers->F));
+	expected = create_test_result(0x00, 0xA0);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Register A is 0x05, test bit 1. Not set so Zero is raised\n");
+	load_immediate_byte(&(registers->A), 0x05);
+	test_bit_register(&(registers->A), 7, &(registers->F));
+	expected = create_test_result(0x00, 0xA0);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Register A is 0x05, test bit 0 expect set, Zero not raised\n");
+	load_immediate_byte(&(registers->A), 0x05);
+	test_bit_register(&(registers->A), 0, &(registers->F));
+	expected = create_test_result(0x00, 0x20);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Register A is 0x05, test bit 2 expect set, Zero not raised\n");
+	load_immediate_byte(&(registers->A), 0x05);
+	test_bit_register(&(registers->A), 2, &(registers->F));
+	expected = create_test_result(0x00, 0x20);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("\nTest Bit Indirect\n");
+
+	printf("Test 0x05, bit 7. Not set so expect Zero raised.");
+	memory_space[45] = 0x05;
+	registers->HL = 45;
+	test_bit_indirect(&(registers->HL), 7, &(registers->F));
+	expected = create_test_result(0x00, 0xA0);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Test 0x05, bit 1. Not set so expect Zero raised.");
+	memory_space[45] = 0x05;
+	registers->HL = 45;
+	test_bit_indirect(&(registers->HL), 1, &(registers->F));
+	expected = create_test_result(0x00, 0xA0);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);
+
+	printf("Test 0x05, bit 0. Set so expect Zero not to be raised.");
+	memory_space[45] = 0x05;
+	registers->HL = 45;
+	test_bit_indirect(&(registers->HL), 0, &(registers->F));
+	expected = create_test_result(0x00, 0x20);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);	
+
+	printf("Test 0x05, bit 2. Set so expect Zero not to be raised.");
+	memory_space[45] = 0x05;
+	registers->HL = 45;
+	test_bit_indirect(&(registers->HL), 2, &(registers->F));
+	expected = create_test_result(0x00, 0x20);			// Half Carry is always set
+	actual = create_test_result(0x00, registers->F);
+	check_result(&expected, &actual);	
+	
+}
+
 // Testing Complement Operations
 void test_complements() {
 	TestResult expected;	// Holds the expected results
@@ -1191,7 +1269,7 @@ void test_complements() {
 	actual = (TestResult){.result = 0x00, .flags = registers->F};
 	check_result(&expected, &actual);
 
-	printf("Test: Setting Carry Flag Carry Flag\n");
+	printf("Test: Setting Carry Flag, Complement Carry Flag\n");
 	registers->F = 0x00;
 	complement_carry_flag(&(registers->F));
 	expected = (TestResult){.result = 0x00, .flags = 0x10};
